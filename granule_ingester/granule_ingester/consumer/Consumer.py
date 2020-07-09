@@ -17,9 +17,9 @@ import logging
 
 import aio_pika
 
+from granule_ingester.exceptions import PipelineBuildingError, PipelineRunningError
 from granule_ingester.healthcheck import HealthCheck
 from granule_ingester.pipeline import Pipeline
-from granule_ingester.exceptions import PipelineBuildingError
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +79,9 @@ class Consumer(HealthCheck):
             message.reject()
             logger.exception(f"Failed to build the granule-processing pipeline. This message will be dropped "
                              f"from RabbitMQ. The exception was:\n{e}")
+        except PipelineRunningError as e:
+            message.reject()
+            logger.exception(f"Processing the granule failed. It will not be retried. The exception was:\n{e}")
         except Exception as e:
             message.reject(requeue=True)
             logger.exception(f"Processing message failed. Message will be re-queued. The exception was:\n{e}")

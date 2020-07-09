@@ -17,13 +17,15 @@
 import logging
 import time
 from typing import List
-from granule_ingester.exceptions import PipelineBuildingError
+
 import aiomultiprocess
 import xarray as xr
 import yaml
-from yaml.scanner import ScannerError
+from aiomultiprocess.types import ProxyException
 from nexusproto import DataTile_pb2 as nexusproto
+from yaml.scanner import ScannerError
 
+from granule_ingester.exceptions import PipelineBuildingError, PipelineRunningError
 from granule_ingester.granule_loaders import GranuleLoader
 from granule_ingester.pipeline.Modules import modules as processor_module_mappings
 from granule_ingester.processors.TileProcessor import TileProcessor
@@ -62,6 +64,7 @@ async def _process_tile_in_worker(serialized_input_tile: str):
 
     input_tile = nexusproto.NexusTile.FromString(serialized_input_tile)
     processed_tile = _recurse(_worker_processor_list, _worker_dataset, input_tile)
+
     if processed_tile:
         await _worker_data_store.save_data(processed_tile)
         await _worker_metadata_store.save_metadata(processed_tile)
@@ -149,7 +152,11 @@ class Pipeline:
                 # aiomultiprocess is built on top of the stdlib multiprocessing library, which has the limitation that
                 # a queue can't have more than 2**15-1 tasks. So, we have to batch it.
                 for chunk in type(self)._chunk_list(serialized_tiles, MAX_QUEUE_SIZE):
-                    await pool.map(_process_tile_in_worker, chunk)
+                    try:
+                        await pool.map(_process_tile_in_worker, chunk)
+                    except ProxyException:
+                        pool.terminate()
+                        raise PipelineRunningError("Running the pipeline failed and could not recover.")
 
         end = time.perf_counter()
         logger.info("Pipeline finished in {} seconds".format(end - start))
