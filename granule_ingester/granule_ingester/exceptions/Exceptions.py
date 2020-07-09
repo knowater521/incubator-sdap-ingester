@@ -1,0 +1,2 @@
+class PipelineBuildingError(Exception):
+    pass

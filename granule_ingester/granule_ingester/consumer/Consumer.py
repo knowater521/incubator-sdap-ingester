@@ -19,6 +19,7 @@ import aio_pika
 
 from granule_ingester.healthcheck import HealthCheck
 from granule_ingester.pipeline import Pipeline
+from granule_ingester.exceptions import PipelineBuildingError
 
 logger = logging.getLogger(__name__)
 
@@ -74,9 +75,13 @@ class Consumer(HealthCheck):
                                             metadata_store_factory=metadata_store_factory)
             await pipeline.run()
             message.ack()
+        except PipelineBuildingError as e:
+            message.reject()
+            logger.exception(f"Failed to build the granule-processing pipeline. This message will be dropped "
+                             f"from RabbitMQ. The exception was:\n{e}")
         except Exception as e:
             message.reject(requeue=True)
-            logger.error("Processing message failed. Message will be re-queued. The exception was:\n{}".format(e))
+            logger.exception(f"Processing message failed. Message will be re-queued. The exception was:\n{e}")
 
     async def start_consuming(self):
         channel = await self._connection.channel()

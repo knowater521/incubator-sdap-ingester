@@ -17,10 +17,11 @@
 import logging
 import time
 from typing import List
-
+from granule_ingester.exceptions import PipelineBuildingError
 import aiomultiprocess
 import xarray as xr
 import yaml
+from yaml.scanner import ScannerError
 from nexusproto import DataTile_pb2 as nexusproto
 
 from granule_ingester.granule_loaders import GranuleLoader
@@ -90,20 +91,15 @@ class Pipeline:
 
     @classmethod
     def from_string(cls, config_str: str, data_store_factory, metadata_store_factory):
-        config = yaml.load(config_str, yaml.FullLoader)
-        return cls._build_pipeline(config,
-                                   data_store_factory,
-                                   metadata_store_factory,
-                                   processor_module_mappings)
-
-    @classmethod
-    def from_file(cls, config_path: str, data_store_factory, metadata_store_factory):
-        with open(config_path) as config_file:
-            config = yaml.load(config_file, yaml.FullLoader)
+        try:
+            config = yaml.load(config_str, yaml.FullLoader)
             return cls._build_pipeline(config,
                                        data_store_factory,
                                        metadata_store_factory,
                                        processor_module_mappings)
+
+        except yaml.scanner.ScannerError:
+            raise PipelineBuildingError("Cannot build pipeline because of a syntax error in the YAML.")
 
     @classmethod
     def _build_pipeline(cls,
@@ -111,17 +107,22 @@ class Pipeline:
                         data_store_factory,
                         metadata_store_factory,
                         module_mappings: dict):
-        granule_loader = GranuleLoader(**config['granule'])
+        try:
+            granule_loader = GranuleLoader(**config['granule'])
 
-        slicer_config = config['slicer']
-        slicer = cls._parse_module(slicer_config, module_mappings)
+            slicer_config = config['slicer']
+            slicer = cls._parse_module(slicer_config, module_mappings)
 
-        tile_processors = []
-        for processor_config in config['processors']:
-            module = cls._parse_module(processor_config, module_mappings)
-            tile_processors.append(module)
+            tile_processors = []
+            for processor_config in config['processors']:
+                module = cls._parse_module(processor_config, module_mappings)
+                tile_processors.append(module)
 
-        return cls(granule_loader, slicer, data_store_factory, metadata_store_factory, tile_processors)
+            return cls(granule_loader, slicer, data_store_factory, metadata_store_factory, tile_processors)
+        except KeyError as e:
+            raise PipelineBuildingError(f"Cannot build pipeline because {e} is missing from the YAML.")
+        except Exception:
+            raise PipelineBuildingError("Cannot build pipeline.")
 
     @classmethod
     def _parse_module(cls, module_config: dict, module_mappings: dict):
