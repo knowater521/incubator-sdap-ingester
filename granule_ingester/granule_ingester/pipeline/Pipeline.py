@@ -22,6 +22,7 @@ import aiomultiprocess
 import xarray as xr
 import yaml
 from aiomultiprocess.types import ProxyException
+from cassandra.cluster import NoHostAvailable
 from nexusproto import DataTile_pb2 as nexusproto
 from yaml.scanner import ScannerError
 
@@ -66,8 +67,11 @@ async def _process_tile_in_worker(serialized_input_tile: str):
     processed_tile = _recurse(_worker_processor_list, _worker_dataset, input_tile)
 
     if processed_tile:
+        # try:
         await _worker_data_store.save_data(processed_tile)
         await _worker_metadata_store.save_metadata(processed_tile)
+        # except NoHostAvailable as e:
+        #     logger.error(f"Could not save tile {processed_tile.tile.tile_id} to Cassandra")
 
 
 def _recurse(processor_list: List[TileProcessor],

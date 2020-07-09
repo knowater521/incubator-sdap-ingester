@@ -8,3 +8,7 @@ class PipelineRunningError(Exception):
 
 class TileProcessingError(Exception):
     pass
+
+
+class ConnectionErrorRabbitMQ(Exception):
+    pass

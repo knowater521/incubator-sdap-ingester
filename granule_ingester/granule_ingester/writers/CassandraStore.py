@@ -18,7 +18,7 @@ import asyncio
 import logging
 import uuid
 
-from cassandra.cluster import Cluster, Session
+from cassandra.cluster import Cluster, Session, NoHostAvailable
 from cassandra.cqlengine import columns
 from cassandra.cqlengine.models import Model
 from nexusproto.DataTile_pb2 import NexusTile, TileData
@@ -65,10 +65,13 @@ class CassandraStore(DataStore):
             self._session.shutdown()
 
     async def save_data(self, tile: NexusTile) -> None:
-        tile_id = uuid.UUID(tile.summary.tile_id)
-        serialized_tile_data = TileData.SerializeToString(tile.tile)
-        prepared_query = self._session.prepare("INSERT INTO sea_surface_temp (tile_id, tile_blob) VALUES (?, ?)")
-        await type(self)._execute_query_async(self._session, prepared_query, [tile_id, bytearray(serialized_tile_data)])
+        try:
+            tile_id = uuid.UUID(tile.summary.tile_id)
+            serialized_tile_data = TileData.SerializeToString(tile.tile)
+            prepared_query = self._session.prepare("INSERT INTO sea_surface_temp (tile_id, tile_blob) VALUES (?, ?)")
+            await type(self)._execute_query_async(self._session, prepared_query, [tile_id, bytearray(serialized_tile_data)])
+        except NoHostAvailable as e:
+            logger.error(f"Cannot connect to Cassandra to save tile {tile.summary.tile_id}")
 
     @staticmethod
     async def _execute_query_async(session: Session, query, parameters=None):
