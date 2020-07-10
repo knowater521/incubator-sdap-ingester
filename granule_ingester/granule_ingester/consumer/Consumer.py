@@ -16,8 +16,9 @@
 import logging
 
 import aio_pika
-import sys
-from granule_ingester.exceptions import PipelineBuildingError, PipelineRunningError, ConnectionErrorRabbitMQ
+
+from granule_ingester.exceptions import PipelineBuildingError, PipelineRunningError, RabbitMQConnectionError, \
+    RabbitMQFailedHealthCheckError
 from granule_ingester.healthcheck import HealthCheck
 from granule_ingester.pipeline import Pipeline
 
@@ -48,8 +49,8 @@ class Consumer(HealthCheck):
             await connection.close()
             return True
         except:
-            logger.error("Cannot connect to RabbitMQ! Connection string was {}".format(self._connection_string))
-            return False
+            raise RabbitMQFailedHealthCheckError(f"Cannot connect to RabbitMQ! "
+                                                 f"Connection string was {self._connection_string}")
 
     async def _get_connection(self) -> aio_pika.Connection:
         return await aio_pika.connect_robust(self._connection_string)
@@ -97,8 +98,7 @@ class Consumer(HealthCheck):
             except aio_pika.exceptions.MessageProcessError:
                 # Do not try to close() the queue iterator! If we get here, that means the RabbitMQ
                 # connection has died, and attempting to close the queue will only raise another exception.
-                raise ConnectionErrorRabbitMQ("Lost connection to RabbitMQ while processing a granule.")
+                raise RabbitMQConnectionError("Lost connection to RabbitMQ while processing a granule.")
             except Exception as e:
                 queue_iter.close()
                 raise e
-

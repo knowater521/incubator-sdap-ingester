@@ -15,6 +15,7 @@
 
 import argparse
 import asyncio
+from granule_ingester.exceptions import FailedHealthCheckError
 import logging
 from functools import partial
 from typing import List
@@ -106,16 +107,15 @@ async def main():
                         data_store_factory=partial(cassandra_factory, cassandra_contact_points, cassandra_port),
                         metadata_store_factory=partial(solr_factory, solr_host_and_port))
     try:
-        if await run_health_checks(
-                [CassandraStore(cassandra_contact_points, cassandra_port),
-                 SolrStore(solr_host_and_port),
-                 consumer]):
-            async with consumer:
-                logger.info("All external dependencies have passed the health checks. Now listening to message queue.")
-                await consumer.start_consuming()
-        else:
-            logger.error("Quitting because not all dependencies passed the health checks.")
-            sys.exit(1)
+        await run_health_checks([CassandraStore(cassandra_contact_points, cassandra_port),
+                                 SolrStore(solr_host_and_port),
+                                 consumer])
+        async with consumer:
+            logger.info("All external dependencies have passed the health checks. Now listening to message queue.")
+            await consumer.start_consuming()
+    except FailedHealthCheckError as e:
+        logger.error(f"Quitting because not all dependencies passed the health checks: {e}")
+        sys.exit(1)
     except Exception as e:
         logger.exception(f"Shutting down because of an unrecoverable error:\n{e}")
         sys.exit(1)

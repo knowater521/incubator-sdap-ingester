@@ -23,6 +23,7 @@ from cassandra.cqlengine import columns
 from cassandra.cqlengine.models import Model
 from nexusproto.DataTile_pb2 import NexusTile, TileData
 
+from granule_ingester.exceptions import CassandraFailedHealthCheckError
 from granule_ingester.writers.DataStore import DataStore
 
 logging.getLogger('cassandra').setLevel(logging.INFO)
@@ -47,9 +48,8 @@ class CassandraStore(DataStore):
             session = self._get_session()
             session.shutdown()
             return True
-        except:
-            logger.error("Cannot connect to Cassandra!")
-            return False
+        except Exception:
+            raise CassandraFailedHealthCheckError("Cannot connect to Cassandra!")
 
     def _get_session(self) -> Session:
         cluster = Cluster(contact_points=self._contact_points, port=self._port)
@@ -69,7 +69,8 @@ class CassandraStore(DataStore):
             tile_id = uuid.UUID(tile.summary.tile_id)
             serialized_tile_data = TileData.SerializeToString(tile.tile)
             prepared_query = self._session.prepare("INSERT INTO sea_surface_temp (tile_id, tile_blob) VALUES (?, ?)")
-            await type(self)._execute_query_async(self._session, prepared_query, [tile_id, bytearray(serialized_tile_data)])
+            await type(self)._execute_query_async(self._session, prepared_query,
+                                                  [tile_id, bytearray(serialized_tile_data)])
         except NoHostAvailable as e:
             logger.error(f"Cannot connect to Cassandra to save tile {tile.summary.tile_id}")
 

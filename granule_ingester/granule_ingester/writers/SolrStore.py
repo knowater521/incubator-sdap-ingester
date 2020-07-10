@@ -26,7 +26,7 @@ from nexusproto.DataTile_pb2 import *
 from tenacity import *
 
 from granule_ingester.writers.MetadataStore import MetadataStore
-
+from granule_ingester.exceptions import SolrFailedHealthCheckError
 logger = logging.getLogger(__name__)
 
 
@@ -56,7 +56,7 @@ class SolrStore(MetadataStore):
                 else:
                     logger.error("Solr health check returned status {}.".format(response.status))
         except aiohttp.ClientConnectionError as e:
-            logger.error("Cannot connect to Solr!")
+            raise SolrFailedHealthCheckError("Cannot connect to to Solr!")
 
         return False
 

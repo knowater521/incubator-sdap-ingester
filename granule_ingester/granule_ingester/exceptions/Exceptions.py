@@ -10,5 +10,21 @@ class TileProcessingError(Exception):
     pass
 
 
-class ConnectionErrorRabbitMQ(Exception):
+class RabbitMQConnectionError(Exception):
+    pass
+
+
+class FailedHealthCheckError(Exception):
+    pass
+
+
+class CassandraFailedHealthCheckError(FailedHealthCheckError):
+    pass
+
+
+class SolrFailedHealthCheckError(FailedHealthCheckError):
+    pass
+
+
+class RabbitMQFailedHealthCheckError(FailedHealthCheckError):
     pass
