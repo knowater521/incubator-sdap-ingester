@@ -24,7 +24,7 @@ from cassandra.cqlengine.models import Model
 from cassandra.policies import RetryPolicy, ConstantReconnectionPolicy
 from nexusproto.DataTile_pb2 import NexusTile, TileData
 
-from granule_ingester.exceptions import CassandraFailedHealthCheckError, CassandraConnectionError
+from granule_ingester.exceptions import CassandraFailedHealthCheckError, CassandraLostConnectionError
 from granule_ingester.writers.DataStore import DataStore
 
 logging.getLogger('cassandra').setLevel(logging.INFO)
@@ -77,7 +77,7 @@ class CassandraStore(DataStore):
             await self._execute_query_async(self._session, prepared_query,
                                             [tile_id, bytearray(serialized_tile_data)])
         except Exception:
-            raise CassandraConnectionError(f"Cannot connect to Cassandra to save tile.")
+            raise CassandraLostConnectionError(f"Lost connection to Cassandra, and cannot save tiles.")
 
     @staticmethod
     async def _execute_query_async(session: Session, query, parameters=None):

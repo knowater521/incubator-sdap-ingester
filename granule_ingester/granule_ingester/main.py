@@ -15,7 +15,7 @@
 
 import argparse
 import asyncio
-from granule_ingester.exceptions import FailedHealthCheckError
+from granule_ingester.exceptions import FailedHealthCheckError, LostConnectionError
 import logging
 from functools import partial
 from typing import List
@@ -115,6 +115,9 @@ async def main():
             await consumer.start_consuming()
     except FailedHealthCheckError as e:
         logger.error(f"Quitting because not all dependencies passed the health checks: {e}")
+        sys.exit(1)
+    except LostConnectionError as e:
+        logger.error(f"{e} Any messages that were being processed have been re-queued. Quitting.")
         sys.exit(1)
     except Exception as e:
         logger.exception(f"Shutting down because of an unrecoverable error:\n{e}")
