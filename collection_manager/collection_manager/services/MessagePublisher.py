@@ -27,7 +27,7 @@ class MessagePublisher:
         :return: None
         """
         properties = pika.BasicProperties(content_type='text/plain',
-                                          delivery_mode=1,
+                                          delivery_mode=2,
                                           priority=priority)
         self._channel.basic_publish(exchange='',
                                     routing_key=self._queue,

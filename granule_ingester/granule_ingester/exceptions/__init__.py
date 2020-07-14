@@ -1,3 +1,4 @@
+from .Exceptions import CassandraConnectionError
 from .Exceptions import CassandraFailedHealthCheckError
 from .Exceptions import FailedHealthCheckError
 from .Exceptions import PipelineBuildingError

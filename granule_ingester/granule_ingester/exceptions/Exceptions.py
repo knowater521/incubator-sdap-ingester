@@ -14,6 +14,10 @@ class RabbitMQConnectionError(Exception):
     pass
 
 
+class CassandraConnectionError(Exception):
+    pass
+
+
 class FailedHealthCheckError(Exception):
     pass
 
@@ -28,3 +32,5 @@ class SolrFailedHealthCheckError(FailedHealthCheckError):
 
 class RabbitMQFailedHealthCheckError(FailedHealthCheckError):
     pass
+
+
