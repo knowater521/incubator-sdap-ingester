@@ -76,7 +76,7 @@ class CassandraStore(DataStore):
             prepared_query = self._session.prepare("INSERT INTO sea_surface_temp (tile_id, tile_blob) VALUES (?, ?)")
             await self._execute_query_async(self._session, prepared_query,
                                             [tile_id, bytearray(serialized_tile_data)])
-        except Exception:
+        except NoHostAvailable:
             raise CassandraLostConnectionError(f"Lost connection to Cassandra, and cannot save tiles.")
 
     @staticmethod

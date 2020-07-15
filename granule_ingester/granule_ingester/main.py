@@ -46,7 +46,7 @@ async def run_health_checks(dependencies: List[HealthCheck]):
     return True
 
 
-async def main():
+async def main(loop):
     parser = argparse.ArgumentParser(description='Listen to RabbitMQ for granule ingestion instructions, and process '
                                                  'and ingest a granule for each message that comes through.')
     parser.add_argument('--rabbitmq_host',
@@ -115,14 +115,14 @@ async def main():
             await consumer.start_consuming()
     except FailedHealthCheckError as e:
         logger.error(f"Quitting because not all dependencies passed the health checks: {e}")
-        sys.exit(1)
     except LostConnectionError as e:
         logger.error(f"{e} Any messages that were being processed have been re-queued. Quitting.")
-        sys.exit(1)
     except Exception as e:
         logger.exception(f"Shutting down because of an unrecoverable error:\n{e}")
+    finally:
         sys.exit(1)
 
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main(loop))
