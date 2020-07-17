@@ -15,16 +15,15 @@
 
 import argparse
 import asyncio
-from granule_ingester.exceptions import FailedHealthCheckError, LostConnectionError
 import logging
+import sys
 from functools import partial
 from typing import List
 
 from granule_ingester.consumer import Consumer
+from granule_ingester.exceptions import FailedHealthCheckError, LostConnectionError
 from granule_ingester.healthcheck import HealthCheck
-from granule_ingester.writers import CassandraStore
-from granule_ingester.writers import SolrStore
-import sys
+from granule_ingester.writers import CassandraStore, SolrStore
 
 
 def cassandra_factory(contact_points, port):
@@ -33,8 +32,8 @@ def cassandra_factory(contact_points, port):
     return store
 
 
-def solr_factory(solr_host_and_port):
-    store = SolrStore(solr_host_and_port)
+def solr_factory(solr_host_and_port, zk_host_and_port):
+    store = SolrStore(zk_url=zk_host_and_port) if zk_host_and_port else SolrStore(solr_url=solr_host_and_port)
     store.connect()
     return store
 
@@ -78,6 +77,8 @@ async def main(loop):
                         default='http://localhost:8983',
                         metavar='HOST:PORT',
                         help='Solr host and port. (Default: http://localhost:8983)')
+    parser.add_argument('--zk_host_and_port',
+                        metavar="HOST:PORT")
     parser.add_argument('-v',
                         '--verbose',
                         action='store_true',
@@ -99,16 +100,18 @@ async def main(loop):
     cassandra_contact_points = args.cassandra_contact_points
     cassandra_port = args.cassandra_port
     solr_host_and_port = args.solr_host_and_port
+    zk_host_and_port = args.zk_host_and_port
 
     consumer = Consumer(rabbitmq_host=args.rabbitmq_host,
                         rabbitmq_username=args.rabbitmq_username,
                         rabbitmq_password=args.rabbitmq_password,
                         rabbitmq_queue=args.rabbitmq_queue,
                         data_store_factory=partial(cassandra_factory, cassandra_contact_points, cassandra_port),
-                        metadata_store_factory=partial(solr_factory, solr_host_and_port))
+                        metadata_store_factory=partial(solr_factory, solr_host_and_port, zk_host_and_port))
     try:
+        solr_store = SolrStore(zk_url=zk_host_and_port) if zk_host_and_port else SolrStore(solr_url=solr_host_and_port)
         await run_health_checks([CassandraStore(cassandra_contact_points, cassandra_port),
-                                 SolrStore(solr_host_and_port),
+                                 solr_store,
                                  consumer])
         async with consumer:
             logger.info("All external dependencies have passed the health checks. Now listening to message queue.")

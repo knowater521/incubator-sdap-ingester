@@ -7,4 +7,5 @@ from .Exceptions import PipelineRunningError
 from .Exceptions import RabbitMQFailedHealthCheckError
 from .Exceptions import RabbitMQLostConnectionError
 from .Exceptions import SolrFailedHealthCheckError
+from .Exceptions import SolrLostConnectionError
 from .Exceptions import TileProcessingError

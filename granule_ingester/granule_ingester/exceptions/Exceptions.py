@@ -21,6 +21,9 @@ class RabbitMQLostConnectionError(LostConnectionError):
 class CassandraLostConnectionError(LostConnectionError):
     pass
 
+class SolrLostConnectionError(LostConnectionError):
+    pass
+
 
 class FailedHealthCheckError(Exception):
     pass
