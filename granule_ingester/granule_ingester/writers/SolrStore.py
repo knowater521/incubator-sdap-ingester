@@ -59,7 +59,7 @@ class SolrStore(MetadataStore):
 
     def _get_connection(self) -> pysolr.Solr:
         if self._zk_url:
-            zk = pysolr.ZooKeeper(f"{self._zk_url}/solr")
+            zk = pysolr.ZooKeeper(f"{self._zk_url}")
             collections = {}
             for c in zk.zk.get_children("collections"):
                 collections.update(json.loads(zk.zk.get("collections/{}/state.json".format(c))[0].decode("ascii")))

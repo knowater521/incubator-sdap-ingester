@@ -18,6 +18,7 @@ import asyncio
 import logging
 import uuid
 
+from cassandra.auth import PlainTextAuthProvider
 from cassandra.cluster import Cluster, Session, NoHostAvailable
 from cassandra.cqlengine import columns
 from cassandra.cqlengine.models import Model
@@ -39,8 +40,10 @@ class TileModel(Model):
 
 
 class CassandraStore(DataStore):
-    def __init__(self, contact_points=None, port=9042):
+    def __init__(self, contact_points=None, port=9042, username=None, password=None):
         self._contact_points = contact_points
+        self._username = username
+        self._password = password
         self._port = port
         self._session = None
 
@@ -53,11 +56,18 @@ class CassandraStore(DataStore):
             raise CassandraFailedHealthCheckError("Cannot connect to Cassandra!")
 
     def _get_session(self) -> Session:
+
+        if self._username and self._password:
+            auth_provider = PlainTextAuthProvider(username=self._username, password=self._password)
+        else:
+            auth_provider = None
+
         cluster = Cluster(contact_points=self._contact_points,
                           port=self._port,
                           # load_balancing_policy=
                           reconnection_policy=ConstantReconnectionPolicy(delay=5.0),
-                          default_retry_policy=RetryPolicy())
+                          default_retry_policy=RetryPolicy(),
+                          auth_provider=auth_provider)
         session = cluster.connect()
         session.set_keyspace('nexustiles')
         return session

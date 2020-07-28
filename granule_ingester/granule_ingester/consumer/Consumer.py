@@ -104,4 +104,5 @@ class Consumer(HealthCheck):
                 raise RabbitMQLostConnectionError("Lost connection to RabbitMQ while processing a granule.")
             except Exception as e:
                 await queue_iter.close()
+                await channel.close()
                 raise e

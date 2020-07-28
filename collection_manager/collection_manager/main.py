@@ -84,7 +84,7 @@ async def main():
                 return
 
     except Exception as e:
-        logger.error(e)
+        logger.exception(e)
         return
 
 
